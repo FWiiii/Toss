@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { ref, watch, onMounted } from 'vue'
 import supabase from '../utils/supabase'
+import { ASEKeyManager } from '../utils/crypto'
 
 // 接收父组件传来的 props
 const props = defineProps({
@@ -8,7 +10,7 @@ const props = defineProps({
 })
 
 // 定义事件，用于通知父组件关闭、登录成功和登出
-const emit = defineEmits(['update:isOpen', 'close', 'loginSuccess', 'logout'])
+const emit = defineEmits(['update:isOpen', 'close', 'loginSuccess', 'logout', 'showASEKeyModal'])
 
 // 状态管理
 const isLogin = ref(true) // true为登录，false为注册
@@ -85,9 +87,14 @@ async function handleLogin() {
 
     if (error) throw error
 
-    // 登录成功
+    // 登录成功，检查ASE密钥
     emit('loginSuccess', data.user)
     close()
+
+    // 检查是否有ASE密钥，如果没有则显示设置界面
+    if (!ASEKeyManager.hasKey()) {
+      emit('showASEKeyModal')
+    }
   } catch (error) {
     errorMessage.value = (error as any).message || '登录失败，请重试'
   } finally {
@@ -145,17 +152,100 @@ async function handleLogout() {
 
 // 进阶优化：弹窗打开时，禁止背景页面滚动
 watch(() => props.isOpen, (newVal) => {
-  if (process.client) {
+  if (import.meta.client) {
     document.body.style.overflow = newVal ? 'hidden' : ''
   }
 })
+
+// ASE密钥管理
+const ASEToken = ref('')
+const aseKeyStatus = ref<'none' | 'valid' | 'invalid'>('none')
+
+// 组件挂载时检查ASE密钥状态
+onMounted(() => {
+  checkASEKeyStatus()
+})
+
+// 检查ASE密钥状态
+function checkASEKeyStatus() {
+  try {
+    const key = ASEKeyManager.getKey()
+    if (key) {
+      ASEToken.value = key
+      const isValid = ASEKeyManager.isKeyValid()
+      aseKeyStatus.value = isValid ? 'valid' : 'invalid'
+    } else {
+      aseKeyStatus.value = 'none'
+    }
+  } catch (error) {
+    aseKeyStatus.value = 'invalid'
+  }
+}
+
+// 保存或修改ASE密钥
+async function saveASEToken() {
+  const key = ASEToken.value.trim()
+
+  if (!key) {
+    errorMessage.value = '请输入ASE密钥'
+    return
+  }
+
+  if (key.length < 8) {
+    errorMessage.value = '密钥长度至少为8个字符'
+    return
+  }
+
+  try {
+    // 测试密钥是否有效
+    const isValid = await ASEKeyManager.isKeyValid()
+    if (isValid && key === ASEKeyManager.getKey()) {
+      errorMessage.value = '密钥未发生变化'
+      return
+    }
+
+    // 保存新密钥
+    ASEKeyManager.setKey(key)
+    checkASEKeyStatus()
+
+    if (aseKeyStatus.value === 'valid') {
+      errorMessage.value = '密钥保存成功'
+      setTimeout(() => {
+        errorMessage.value = ''
+      }, 2000)
+    } else {
+      errorMessage.value = '密钥保存失败，请检查密钥格式'
+    }
+  } catch (error) {
+    errorMessage.value = '密钥保存失败，请重试'
+  }
+}
+
+// 删除ASE密钥
+function removeASEToken() {
+  if (confirm('确定要删除ASE密钥吗？删除后将无法解密之前加密的数据。')) {
+    ASEKeyManager.removeKey()
+    ASEToken.value = ''
+    aseKeyStatus.value = 'none'
+    errorMessage.value = '密钥已删除'
+    setTimeout(() => {
+      errorMessage.value = ''
+    }, 2000)
+  }
+}
 </script>
 
 <template>
   <Teleport to="body">
     <Transition name="fade">
-      <div v-if="isOpen" class="modal-overlay" @click.self="close">
-        <div class="modal-content">
+      <div v-if="isOpen" 
+      class="modal-overlay" 
+      @click.self="close"
+      fixed top-0 left-0 w-full h-full z-9999 p-5 bg-black bg-opacity-50 flex justify-center items-center
+      >
+        <div class="modal-content"
+        bg-white rounded-xl min-w-360px max-h-90vh overflow-y-auto shadow-lg p-6
+        >
           <!-- 模态框头部 -->
           <div class="modal-header">
             <h2 v-if="currentUser">账户信息</h2>
@@ -177,6 +267,50 @@ watch(() => props.isOpen, (newVal) => {
             <!-- 错误信息显示 -->
             <div v-if="errorMessage" class="error-message">
               {{ errorMessage }}
+            </div>
+
+            <!-- ASE密钥管理区域 -->
+            <div class="ase-key-section">
+              <div class="section-header">
+                <h3>ASE密钥设置</h3>
+                <div class="key-status" :class="aseKeyStatus">
+                  <span class="status-indicator"></span>
+                  <span class="status-text">
+                    {{ aseKeyStatus === 'none' ? '未设置' : aseKeyStatus === 'valid' ? '已设置' : '无效' }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="key-input-group">
+                <input
+                  type="password"
+                  v-model="ASEToken"
+                  placeholder="输入ASE密钥（至少8个字符）"
+                  class="key-input"
+                />
+                <div class="key-actions">
+                  <button
+                    class="btn-save"
+                    @click="saveASEToken"
+                    :disabled="!ASEToken.trim() || ASEToken.trim().length < 8"
+                  >
+                    {{ ASEToken === '' ? '保存' : '修改' }}
+                  </button>
+                  <button
+                    v-if="aseKeyStatus !== 'none'"
+                    class="btn-remove"
+                    @click="removeASEToken"
+                  >
+                    删除
+                  </button>
+                </div>
+              </div>
+
+              <div class="key-info">
+                <p class="info-text">
+                  🔒 ASE密钥用于加密剪贴板内容，确保数据安全
+                </p>
+              </div>
             </div>
 
             <!-- 登出按钮 -->
@@ -267,30 +401,9 @@ watch(() => props.isOpen, (newVal) => {
 </template>
 
 <style scoped>
-/* 核心样式：脱离文档流 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 9999;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-}
 
 .modal-content {
-  background: white;
-  border-radius: 12px;
-  min-width: 360px;
   max-width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  padding: 24px;
 }
 
 .modal-header {
@@ -485,6 +598,137 @@ watch(() => props.isOpen, (newVal) => {
 .switch-btn:disabled {
   color: #9ca3af;
   cursor: not-allowed;
+}
+
+/* ASE密钥管理样式 */
+.ase-key-section {
+  margin-bottom: 20px;
+  padding: 16px;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.key-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.key-status.none {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.key-status.valid {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.key-status.invalid {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.status-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+.key-input-group {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.key-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.key-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.key-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-save {
+  padding: 8px 12px;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.btn-save:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+.btn-save:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.btn-remove {
+  padding: 8px 12px;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.btn-remove:hover {
+  background-color: #dc2626;
+}
+
+.key-info {
+  margin-top: 8px;
+}
+
+.info-text {
+  margin: 0;
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.4;
 }
 
 /* 响应式设计 */
