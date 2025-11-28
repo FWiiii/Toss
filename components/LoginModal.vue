@@ -239,58 +239,61 @@ function removeASEToken() {
   <Teleport to="body">
     <Transition name="fade">
       <div v-if="isOpen" 
-      class="modal-overlay" 
+      class="modal-overlay fixed top-0 left-0 w-full  h-full z-9999 p-5 bg-black bg-opacity-50 flex justify-center items-center" 
       @click.self="close"
-      fixed top-0 left-0 w-full h-full z-9999 p-5 bg-black bg-opacity-50 flex justify-center items-center
       >
-        <div class="modal-content"
-        bg-white rounded-xl min-w-360px max-h-90vh overflow-y-auto shadow-lg p-6
+        <div class="modal-content bg-white rounded-xl max-w-90% min-w-360px max-h-90vh overflow-y-auto shadow-lg p-6"
+        
         >
           <!-- 模态框头部 -->
-          <div class="modal-header">
-            <h2 v-if="currentUser">账户信息</h2>
-            <h2 v-else>{{ isLogin ? '登录' : '注册' }}</h2>
-            <button class="close-btn" @click="close">×</button>
+          <div class="flex justify-between items-center mb-6 pb-4 border-b border-solid border-gray-200">
+            <h2 v-if="currentUser" class="m-0 text-2xl font-semibold text-gray-900">账户信息</h2>
+            <h2 v-else class="m-0 text-2xl font-semibold text-gray-900">{{ isLogin ? '登录' : '注册' }}</h2>
+            <button class="border-none bg-transparent text-2xl cursor-pointer text-gray-500 p-1 rounded transition-all duration-200 hover:bg-gray-100 hover:text-gray-700" @click="close">×</button>
           </div>
 
           <!-- 已登录用户信息 -->
-          <div v-if="currentUser" class="user-info">
-            <div class="user-details">
-              <div class="user-avatar">
+          <div v-if="currentUser" class="mb-5">
+            <div class="flex items-center gap-4 mb-5 p-4 bg-gray-50 rounded-lg border-solid border border-gray-200">
+              <div class="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center text-lg font-semibold">
                 {{ currentUser?.email?.charAt(0)?.toUpperCase() || 'U' }}
               </div>
-              <div class="user-email">
+              <div class="flex-1 text-sm text-gray-700 break-words">
                 {{ currentUser?.email || '未知用户' }}
               </div>
             </div>
 
             <!-- 错误信息显示 -->
-            <div v-if="errorMessage" class="error-message">
+            <div v-if="errorMessage" class="mb-4 p-3 rounded-md text-sm bg-red-50 text-red-800 border border-red-200">
               {{ errorMessage }}
             </div>
 
             <!-- ASE密钥管理区域 -->
-            <div class="ase-key-section">
-              <div class="section-header">
-                <h3>ASE密钥设置</h3>
-                <div class="key-status" :class="aseKeyStatus">
-                  <span class="status-indicator"></span>
+            <div class="mb-5 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <div class="flex justify-between items-center mb-3">
+                <h3 class="m-0 text-sm font-semibold text-gray-700">ASE密钥设置</h3>
+                <div class="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium" :class="{
+            'bg-yellow-100 text-yellow-800': aseKeyStatus === 'none',
+            'bg-green-100 text-green-800': aseKeyStatus === 'valid',
+            'bg-red-100 text-red-800': aseKeyStatus === 'invalid'
+          }">
+                  <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
                   <span class="status-text">
                     {{ aseKeyStatus === 'none' ? '未设置' : aseKeyStatus === 'valid' ? '已设置' : '无效' }}
                   </span>
                 </div>
               </div>
 
-              <div class="key-input-group">
+              <div class="flex gap-2 mb-3">
                 <input
                   type="password"
                   v-model="ASEToken"
                   placeholder="输入ASE密钥（至少8个字符）"
-                  class="key-input"
+                  class="flex-1 py-2 px-3 border border-gray-300 rounded-md text-sm outline-none transition-colors duration-200 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20"
                 />
-                <div class="key-actions">
+                <div class="flex gap-1.5">
                   <button
-                    class="btn-save"
+                    class="py-2 px-3 bg-blue-500 text-white border-none rounded-md text-xs font-medium cursor-pointer transition-colors duration-200 whitespace-nowrap hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
                     @click="saveASEToken"
                     :disabled="!ASEToken.trim() || ASEToken.trim().length < 8"
                   >
@@ -298,7 +301,7 @@ function removeASEToken() {
                   </button>
                   <button
                     v-if="aseKeyStatus !== 'none'"
-                    class="btn-remove"
+                    class="py-2 px-3 bg-red-500 text-white border-none rounded-md text-xs font-medium cursor-pointer transition-colors duration-200 whitespace-nowrap hover:bg-red-600"
                     @click="removeASEToken"
                   >
                     删除
@@ -306,8 +309,8 @@ function removeASEToken() {
                 </div>
               </div>
 
-              <div class="key-info">
-                <p class="info-text">
+              <div class="mt-2">
+                <p class="m-0 text-xs text-gray-500 leading-5">
                   🔒 ASE密钥用于加密剪贴板内容，确保数据安全
                 </p>
               </div>
@@ -315,7 +318,7 @@ function removeASEToken() {
 
             <!-- 登出按钮 -->
             <button
-              class="logout-btn"
+              class="w-full py-3 px-4 bg-red-500 text-white border-none rounded-md text-sm font-medium cursor-pointer transition-colors duration-200 mb-5 hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
               @click="handleLogout"
               :disabled="loading"
             >
@@ -324,15 +327,15 @@ function removeASEToken() {
           </div>
 
           <!-- 登录/注册表单 -->
-          <form v-else @submit.prevent="isLogin ? handleLogin() : handleSignup()" class="auth-form">
+          <form v-else @submit.prevent="isLogin ? handleLogin() : handleSignup()" class="mb-5">
             <!-- 邮箱输入 -->
-            <div class="form-group">
-              <label for="email">邮箱</label>
+            <div class="mb-4">
+              <label for="email" class="block mb-1.5 font-medium text-gray-700 text-sm">邮箱</label>
               <input
                 id="email"
                 v-model="email"
                 type="email"
-                class="form-input"
+                class="w-full py-2.5 px-3 border border-gray-300 rounded-md text-sm transition-colors duration-200 shadow-sm box-border focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20 disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed"
                 :disabled="loading"
                 placeholder="请输入邮箱地址"
                 required
@@ -340,13 +343,13 @@ function removeASEToken() {
             </div>
 
             <!-- 密码输入 -->
-            <div class="form-group">
-              <label for="password">密码</label>
+            <div class="mb-4">
+              <label for="password" class="block mb-1.5 font-medium text-gray-700 text-sm">密码</label>
               <input
                 id="password"
                 v-model="password"
                 type="password"
-                class="form-input"
+                class="w-full py-2.5 px-3 border border-gray-300 rounded-md text-sm transition-colors duration-200 shadow-sm box-border focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20 disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed"
                 :disabled="loading"
                 placeholder="请输入密码（至少6位）"
                 required
@@ -354,13 +357,13 @@ function removeASEToken() {
             </div>
 
             <!-- 确认密码（仅注册时显示） -->
-            <div v-if="!isLogin" class="form-group">
-              <label for="confirmPassword">确认密码</label>
+            <div v-if="!isLogin" class="mb-4">
+              <label for="confirmPassword" class="block mb-1.5 font-medium text-gray-700 text-sm">确认密码</label>
               <input
                 id="confirmPassword"
                 v-model="confirmPassword"
                 type="password"
-                class="form-input"
+                class="w-full py-2.5 px-3 border border-gray-300 rounded-md text-sm transition-colors duration-200 shadow-sm box-border focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20 disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed"
                 :disabled="loading"
                 placeholder="请再次输入密码"
                 required
@@ -368,14 +371,14 @@ function removeASEToken() {
             </div>
 
             <!-- 错误信息显示 -->
-            <div v-if="errorMessage" class="error-message" :class="{ 'success-message': errorMessage.includes('注册成功') }">
+            <div v-if="errorMessage" class="mb-4 p-3 rounded-md text-sm border" :class="errorMessage.includes('注册成功') ? 'bg-green-50 text-green-800 border-green-200' : 'bg-red-50 text-red-800 border-red-200'">
               {{ errorMessage }}
             </div>
 
             <!-- 提交按钮 -->
             <button
               type="submit"
-              class="submit-btn"
+              class="w-full py-3 px-4 bg-blue-500 text-white border-none rounded-md text-sm font-medium cursor-pointer transition-colors duration-200 hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
               :disabled="loading"
             >
               {{ loading ? '处理中...' : (isLogin ? '登录' : '注册') }}
@@ -383,11 +386,11 @@ function removeASEToken() {
           </form>
 
           <!-- 切换登录/注册模式 -->
-          <div class="switch-mode">
+          <div class="text-center pt-4 border-t border-gray-200 text-sm text-gray-500">
             <span>{{ isLogin ? '还没有账户？' : '已有账户？' }}</span>
             <button
               type="button"
-              class="switch-btn"
+              class="border-none bg-transparent text-blue-500 cursor-pointer font-medium underline-none ml-1 transition-colors duration-200 hover:text-blue-600 disabled:text-gray-400 disabled:cursor-not-allowed"
               @click="toggleMode"
               :disabled="loading"
             >
@@ -401,336 +404,6 @@ function removeASEToken() {
 </template>
 
 <style scoped>
-
-.modal-content {
-  max-width: 90%;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.modal-header h2 {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #111827;
-}
-
-.close-btn {
-  border: none;
-  background: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #6b7280;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.close-btn:hover {
-  background-color: #f3f4f6;
-  color: #374151;
-}
-
-.auth-form {
-  margin-bottom: 20px;
-}
-
-.user-info {
-  margin-bottom: 20px;
-}
-
-.user-details {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
-  padding: 16px;
-  background-color: #f8fafc;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-}
-
-.user-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background-color: #3b82f6;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.user-email {
-  flex: 1;
-  font-size: 14px;
-  color: #374151;
-  word-break: break-all;
-}
-
-.logout-btn {
-  width: 100%;
-  padding: 12px 16px;
-  background-color: #ef4444;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  margin-bottom: 20px;
-}
-
-.logout-btn:hover:not(:disabled) {
-  background-color: #dc2626;
-}
-
-.logout-btn:disabled {
-  background-color: #9ca3af;
-  cursor: not-allowed;
-}
-
-.form-group {
-  margin-bottom: 16px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 6px;
-  font-weight: 500;
-  color: #374151;
-  font-size: 14px;
-}
-
-.form-input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 14px;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  box-sizing: border-box;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.form-input:disabled {
-  background-color: #f9fafb;
-  color: #6b7280;
-  cursor: not-allowed;
-}
-
-.error-message {
-  margin-bottom: 16px;
-  padding: 12px;
-  border-radius: 6px;
-  font-size: 14px;
-  background-color: #fef2f2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
-}
-
-.success-message {
-  background-color: #f0fdf4;
-  color: #166534;
-  border: 1px solid #bbf7d0;
-}
-
-.submit-btn {
-  width: 100%;
-  padding: 12px 16px;
-  background-color: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.submit-btn:hover:not(:disabled) {
-  background-color: #2563eb;
-}
-
-.submit-btn:disabled {
-  background-color: #9ca3af;
-  cursor: not-allowed;
-}
-
-.switch-mode {
-  text-align: center;
-  padding-top: 16px;
-  border-top: 1px solid #e5e7eb;
-  font-size: 14px;
-  color: #6b7280;
-}
-
-.switch-btn {
-  background: none;
-  border: none;
-  color: #3b82f6;
-  cursor: pointer;
-  font-weight: 500;
-  text-decoration: underline;
-  margin-left: 4px;
-  transition: color 0.2s;
-}
-
-.switch-btn:hover:not(:disabled) {
-  color: #2563eb;
-}
-
-.switch-btn:disabled {
-  color: #9ca3af;
-  cursor: not-allowed;
-}
-
-/* ASE密钥管理样式 */
-.ase-key-section {
-  margin-bottom: 20px;
-  padding: 16px;
-  background-color: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.section-header h3 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #374151;
-}
-
-.key-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.key-status.none {
-  background-color: #fef3c7;
-  color: #92400e;
-}
-
-.key-status.valid {
-  background-color: #d1fae5;
-  color: #065f46;
-}
-
-.key-status.invalid {
-  background-color: #fee2e2;
-  color: #991b1b;
-}
-
-.status-indicator {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: currentColor;
-}
-
-.key-input-group {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.key-input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.key-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.key-actions {
-  display: flex;
-  gap: 6px;
-}
-
-.btn-save {
-  padding: 8px 12px;
-  background-color: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  white-space: nowrap;
-}
-
-.btn-save:hover:not(:disabled) {
-  background-color: #2563eb;
-}
-
-.btn-save:disabled {
-  background-color: #9ca3af;
-  cursor: not-allowed;
-}
-
-.btn-remove {
-  padding: 8px 12px;
-  background-color: #ef4444;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  white-space: nowrap;
-}
-
-.btn-remove:hover {
-  background-color: #dc2626;
-}
-
-.key-info {
-  margin-top: 8px;
-}
-
-.info-text {
-  margin: 0;
-  font-size: 12px;
-  color: #6b7280;
-  line-height: 1.4;
-}
-
 /* 响应式设计 */
 @media (max-width: 480px) {
   .modal-content {
