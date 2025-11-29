@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import LoginModal from '../components/LoginModal.vue'
 import ASEKeyModal from '../components/ASEKeyModal.vue'
-import supabase from '../utils/supabase'
+// import supabase from '../utils/supabase'
 import { CryptoUtil, ASEKeyManager } from '../utils/crypto'
-import '../style/global.css '
+import '../style/global.css'
+import MessageContent from '../components/MessageContent.vue'
+
+const supabase = useSupabaseClient()
 
 interface TossMessage {
   text_id: string
@@ -77,7 +80,8 @@ function listenSupabaseChannel() {
           }
 
           // 添加到数据列表
-          tossMessages.value = [...tossMessages.value, newItem]
+          
+          tossMessages.value = [...tossMessages.value as any[], newItem]
 
           // 滚动到底部显示新内容
           nextTick(() => {
@@ -173,17 +177,15 @@ async function sendTossMessage() {
   text.value = ''
 }
 
-// 解密剪贴板内容
+// 解密内容
 function decryptContent(content: string, isEncrypted: boolean): string {
   if (!isEncrypted) {
     return content
   }
-
   const aseKey = ASEKeyManager.getKey()
   if (!aseKey) {
     return '[加密内容 - 需要ASE密钥]'
   }
-
   try {
     return CryptoUtil.decrypt(content, aseKey)
   } catch (error) {
@@ -208,12 +210,8 @@ const decryptTextContent = (content: string, isEncrypted = false) => {
 // 复制到剪贴板功能
 async function copyToClipboard(text: any) {
   try {
-    // 如果是加密内容，先解密再复制
     let contentToCopy = text.content
-    if (text.encrypted) {
-      contentToCopy = decryptContent(text.content, true)
-    }
-
+    if (text.encrypted) contentToCopy = decryptContent(text.content, true)
     await navigator.clipboard.writeText(contentToCopy)
     // 可以添加一个成功提示
     alert('内容已复制到剪贴板')
@@ -222,6 +220,8 @@ async function copyToClipboard(text: any) {
     alert('复制失败')
   }
 }
+
+const hasASEKey = computed(()=> ASEKeyManager.hasKey())
 </script>
 
 <template>
@@ -234,8 +234,6 @@ async function copyToClipboard(text: any) {
         @logout="handleLogout"
         @showASEKeyModal="showASEKeyModalHandler"
       />
-
-      <!-- ASE密钥设置模态框 -->
       <ASEKeyModal
         v-model:is-open="showASEKeyModal"
         @success="handleASEKeySuccess"
@@ -261,44 +259,44 @@ async function copyToClipboard(text: any) {
             />
           </div>
         </div>
-        <div ref="textContainerRef" class="content" border-t="solid gray-300 1" border-b="solid gray-300 1" flex-1 overflow-auto>
+        <div ref="textContainerRef" border-t="solid gray-300 1" border-b="solid gray-300 1"class="flex-1 overflow-auto p-4">
           <div v-for="text in tossMessages" :key="text.id">
-            <div mt-2 text-center text-10px text-gray-400>
+            <div my-2 text-center text-10px text-gray-400>
               {{ new Date(text.created_at) .toLocaleString () }}
               <span v-if="text.encrypted" ml-2 text-amber-600>🔒 已加密</span>
             </div>
             <div flex items-center justify-end gap-2 rounded text-sm>
               <div i-ic:baseline-content-copy cursor-pointer bg-gray-400 @click="copyToClipboard(text)" />
               <p
-                border="solid gray-300 1" mr-4 rounded-2xl p-2 shadow-sm
+                border="solid gray-300 1" rounded-2xl p-2 shadow-sm
                 :class="{ 'encrypted-content': text.encrypted }"
               >
-                {{ text.encrypted ? decryptTextContent(text.content, true) : text.content }}
+                <MessageContent :content="text.encrypted ? decryptTextContent(text.content, true) : text.content" />
               </p>
             </div>
           </div>
         </div>
         <div class="fotter" h-18 flex flex-col items-center justify-between px-10 py-4>
-          <div border="solid gray-300 1" rounded="lg" h-10 w-full flex items-center gap-2 px-5>
+          <div border="solid gray-300 1" rounded="lg" class="w-full flex items-center gap-2 px-5">
             <div i-ic:outline-file-present h-6 w-6 />
             <input
               v-model="text"
               type="text"
-              class="text-input"
-              flex-1
-              border-none
-              bg-gray-100
-              outline-none
-              :placeholder="ASEKeyManager.getKey() ? '输入内容（已加密保护）' : '输入内容（未加密）'"
+              class="flex-1 border-none bg-gray-100 outline-none"
+              placeholder="输入内容"
             >
-            <div rounded="lg" cursor-pointer bg-purple p-1 @click="sendTossMessage">
+            <div rounded="lg" class="cursor-pointer bg-purple p-1" @click="sendTossMessage">
               <div i-ic:baseline-send h-5 w-5 bg-white />
             </div>
           </div>
-          <div text-10px text-gray-400 flex items-center gap-2>
+          <div class=" text-gray-400 text-xs flex items-center gap-2">
             <span>Drag & Drop files anywhere to upload</span>
-            <span v-if="ASEKeyManager.getKey()" text-green-600>🔒 加密模式</span>
-            <span v-else text-amber-600>⚠️ 未加密</span>
+            <div v-if="hasASEKey" class="flex items-center gap-1">
+              🔒 已加密
+            </div>
+            <div v-else class="items-center gap-1 flex">
+              未加密
+            </div>
           </div>
         </div>
       </div>

@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
-import supabase from '../utils/supabase'
 import { ASEKeyManager } from '../utils/crypto'
-
+const supabase = useSupabaseClient()
 // 接收父组件传来的 props
 const props = defineProps({
   isOpen: Boolean,
